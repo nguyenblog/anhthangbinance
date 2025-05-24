@@ -289,50 +289,7 @@ def format_telegram_message(matched_coins_info, timeframe):
 
     for info in matched_coins_info:
         symbol = info.get("symbol", "N/A")
-        price = info.get("price", 0)
-        ma_short = info.get("ma_short", 0)
-        ma_long = info.get("ma_long", 0)
-        rsi = info.get("rsi", 0)
-        dif = info.get("dif", 0)
-        dea = info.get("dea", 0)
-        
         binance_trade_url = f"https://www.binance.com/en/futures/{symbol}"
-
-        # Xác định volume_lookback_value và MA periods dựa vào timeframe
-        if timeframe == '1H':
-            volume_lookback_value = config.VOLUME_LOOKBACK_1H
-            ma_short_period = 9
-            ma_long_period = 21
-        elif timeframe == '4H':
-            volume_lookback_value = config.VOLUME_LOOKBACK_4H
-            ma_short_period = 20
-            ma_long_period = 50
-        elif timeframe == '1D': # MỚI BỔ SUNG
-            volume_lookback_value = config.VOLUME_LOOKBACK_1D
-            ma_short_period = 20 # Giả định dùng MA20/50 cho D1, có thể thay đổi
-            ma_long_period = 50
-        else: # Fallback mặc định
-            volume_lookback_value = 0 
-            ma_short_period = 0
-            ma_long_period = 0
-
-
-        msg = (
-            f"✅ *Tín hiệu Buy [Khung {timeframe}] cho [{symbol}]({binance_trade_url})*\n\n" 
-            f"💰 *Giá:* `{price:.6f}`\n"
-            f"📈 *MA Short:* `{ma_short:.6f}`\n"
-            f"📉 *MA Long:* `{ma_long:.6f}`\n"
-            f"📊 *RSI:* `{rsi:.2f}`\n"
-            f"↔️ *DIF:* `{dif:.6f}`\n"
-            f"➡️ *DEA:* `{dea:.6f}`\n"
-            f"🚀 *Phân tích chi tiết:*\n"
-            f"- MA Short ({ma_short_period}) đã cắt lên MA Long ({ma_long_period}).\n"
-            f"- Giá đang nằm trên MA Short và trong khoảng cho phép.\n"
-            f"- RSI đang ở mức lý tưởng để có động lượng tăng.\n"
-            f"- Đường DIF đã cắt lên đường DEA, xác nhận động lượng tăng.\n"
-            f"- *Volume xanh liên tiếp trong {volume_lookback_value} nến gần nhất.* (Giá đóng cửa cao hơn nến trước đó)\n" 
-            f"#TínHiệuBuy #{symbol.replace('USDT', '')} #Khung{timeframe}\n"
-            f"----------------------------------------"
-        )
+        msg = f"{symbol}: {binance_trade_url}"
         messages.append(msg)
-    return "\n\n".join(messages)
+    return "\n".join(messages)

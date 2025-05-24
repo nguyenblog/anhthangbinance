@@ -22,16 +22,20 @@ def send_telegram_message(message: str, chat_id: str, bot_token: str):
     max_retries = 3 # Số lần thử lại tối đa
     for attempt in range(max_retries):
         try:
-            response = requests.post(telegram_api_url, data=payload)
+            response = requests.post(telegram_api_url, data=payload, timeout=10)
             response.raise_for_status()  # Ném lỗi nếu HTTP request không thành công (4xx hoặc 5xx)
             logging.info("✅ Đã gửi tin nhắn Telegram thành công.")
             return # Gửi thành công, thoát hàm
         except requests.exceptions.HTTPError as e:
-            if response.status_code == 429:
-                error_json = response.json()
-                retry_after = error_json.get("parameters", {}).get("retry_after", 5) # Mặc định 5 giây nếu không có retry_after
-                logging.warning(f"⚠️ Đã đạt giới hạn gửi tin nhắn Telegram (429). Thử lại sau {retry_after} giây...")
-                time.sleep(retry_after + 1) # Chờ thêm 1 giây để an toàn hơn
+            if response is not None and response.status_code == 429:
+                try:
+                    error_json = response.json() if response.content else {}
+                    retry_after = error_json.get("parameters", {}).get("retry_after", 5) # Mặc định 5 giây nếu không có retry_after
+                    logging.warning(f"⚠️ Đã đạt giới hạn gửi tin nhắn Telegram (429). Thử lại sau {retry_after} giây...")
+                    time.sleep(retry_after + 1) # Chờ thêm 1 giây để an toàn hơn
+                except Exception as json_err:
+                    logging.error(f"❌ Lỗi khi xử lý phản hồi 429: {json_err}")
+                    time.sleep(10)  # Chờ 10 giây nếu không parse được JSON
             else:
                 logging.error(f"❌ Lỗi HTTP khi gửi tin nhắn Telegram (Status: {response.status_code}): {e}")
                 logging.error(f"Response: {response.text}")
