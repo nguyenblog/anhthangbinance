@@ -3,58 +3,43 @@ import logging
 import time
 import config
 
-def send_telegram_message(message: str, chat_id: str, bot_token: str):
-    """
-    Gửi tin nhắn đến Telegram.
-    Tích hợp xử lý lỗi Too Many Requests (429).
-    """
-    if not bot_token or not chat_id:
-        logging.error("❌ TOKEN hoặc CHAT_ID Telegram chưa được cấu hình. Không thể gửi tin nhắn.")
-        return
+try:
+    from slack_sdk import WebClient
+    from slack_sdk.errors import SlackApiError
+except ImportError:
+    WebClient = None
+    SlackApiError = None
 
-    telegram_api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "Markdown" # Sử dụng Markdown để định dạng và link
-    }
-    
-    max_retries = 3 # Số lần thử lại tối đa
-    for attempt in range(max_retries):
-        try:
-            response = requests.post(telegram_api_url, data=payload, timeout=10)
-            response.raise_for_status()  # Ném lỗi nếu HTTP request không thành công (4xx hoặc 5xx)
-            logging.info("✅ Đã gửi tin nhắn Telegram thành công.")
-            return # Gửi thành công, thoát hàm
-        except requests.exceptions.HTTPError as e:
-            if response is not None and response.status_code == 429:
-                try:
-                    error_json = response.json() if response.content else {}
-                    retry_after = error_json.get("parameters", {}).get("retry_after", 5) # Mặc định 5 giây nếu không có retry_after
-                    logging.warning(f"⚠️ Đã đạt giới hạn gửi tin nhắn Telegram (429). Thử lại sau {retry_after} giây...")
-                    time.sleep(retry_after + 1) # Chờ thêm 1 giây để an toàn hơn
-                except Exception as json_err:
-                    logging.error(f"❌ Lỗi khi xử lý phản hồi 429: {json_err}")
-                    time.sleep(10)  # Chờ 10 giây nếu không parse được JSON
-            else:
-                logging.error(f"❌ Lỗi HTTP khi gửi tin nhắn Telegram (Status: {response.status_code}): {e}")
-                logging.error(f"Response: {response.text}")
-                break # Thoát nếu lỗi không phải 429
-        except requests.exceptions.RequestException as e:
-            logging.error(f"❌ Lỗi mạng khi gửi tin nhắn Telegram: {e}")
-            break # Thoát nếu lỗi mạng
-        except Exception as e:
-            logging.error(f"❌ Lỗi không xác định khi gửi tin nhắn Telegram: {e}")
-            break # Thoát nếu lỗi không xác định
-    
-    logging.error(f"❌ Không thể gửi tin nhắn Telegram sau {max_retries} lần thử.")
+def send_slack_message(message: str):
+    """
+    Gửi tin nhắn tới Slack nếu có cấu hình token và channel.
+    """
+    slack_token = getattr(config, "SLACK_TOKEN", None)
+    slack_channel = getattr(config, "SLACK_CHANNEL_ID", None)
+    if not slack_token or not slack_channel:
+        logging.error("❌ SLACK_TOKEN hoặc SLACK_CHANNEL_ID chưa được cấu hình. Không thể gửi tin nhắn Slack.")
+        return
+    if WebClient is None:
+        logging.error("❌ slack_sdk chưa được cài đặt. Không thể gửi tin nhắn Slack.")
+        return
+    try:
+        client = WebClient(token=slack_token)
+        response = client.chat_postMessage(channel=slack_channel, text=message)
+        logging.info(f"Đã gửi tin nhắn Slack: {response['ts']}")
+    except SlackApiError as e:
+        logging.error(f"❌ Lỗi gửi Slack: {e.response['error']}")
+    except Exception as e:
+        logging.error(f"❌ Lỗi không xác định khi gửi Slack: {e}")
+
+def send_telegram_message(message: str, chat_id: str = None, bot_token: str = None):
+    """
+    Gửi tin nhắn đến Slack (bỏ qua Telegram).
+    """
+    send_slack_message(message)
+
 
 def alert_telegram_on_error(error_message: str):
     """
-    Gửi cảnh báo lỗi về Telegram (dùng cho toàn bộ hệ thống khi có lỗi mạng hoặc API lớn).
+    Gửi cảnh báo lỗi về Slack (bỏ qua Telegram hoàn toàn).
     """
-    import config
-    try:
-        send_telegram_message(f"⚠️ *CẢNH BÁO LỖI HỆ THỐNG*\n{error_message}", config.TELEGRAM_CHAT_ID, config.TELEGRAM_BOT_TOKEN)
-    except Exception as e:
-        logging.error(f"❌ Không thể gửi alert Telegram khi gặp lỗi: {e}")
+    send_slack_message(f"⚠️ *CẢNH BÁO LỖI HỆ THỐNG*\n{error_message}")

@@ -18,12 +18,30 @@ if not BINANCE_API_KEY or not BINANCE_API_SECRET:
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# Luôn kiểm tra TELEGRAM_BOT_TOKEN và TELEGRAM_CHAT_ID
-if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-    raise ValueError("❌ Vui lòng cấu hình TELEGRAM_BOT_TOKEN và TELEGRAM_CHAT_ID trong .env")
+# 📢 Slack
+SLACK_TOKEN = os.getenv("SLACK_TOKEN")
+SLACK_CHANNEL_ID = os.getenv("SLACK_CHANNEL_ID")
 
-# ⏰ Cấu hình thời gian chạy bot
-TIME_INTERVAL = int(os.getenv("TIME_INTERVAL", "1")) # Mặc định là 1 giờ/phút
+# Nếu cả Slack lẫn Telegram đều không cấu hình thì cảnh báo
+if (not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID) and (not SLACK_TOKEN or not SLACK_CHANNEL_ID):
+    raise ValueError("❌ Vui lòng cấu hình Slack (SLACK_TOKEN, SLACK_CHANNEL_ID) hoặc Telegram (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID) trong .env")
+
+# Luôn kiểm tra SLACK_TOKEN và SLACK_CHANNEL_ID
+if not SLACK_TOKEN or not SLACK_CHANNEL_ID:
+    raise ValueError("❌ Vui lòng cấu hình SLACK_TOKEN và SLACK_CHANNEL_ID trong .env")
+
+# ⏰ Cấu hình thời gian chạy bot cho từng timeframe
+TIME_INTERVAL_1H = int(os.getenv("TIME_INTERVAL_1H", "60"))
+TIME_INTERVAL_UNIT_1H = os.getenv("TIME_INTERVAL_UNIT_1H", "minutes").lower()
+
+TIME_INTERVAL_4H = int(os.getenv("TIME_INTERVAL_4H", "4"))
+TIME_INTERVAL_UNIT_4H = os.getenv("TIME_INTERVAL_UNIT_4H", "hours").lower()
+
+TIME_INTERVAL_1D = int(os.getenv("TIME_INTERVAL_1D", "1"))
+TIME_INTERVAL_UNIT_1D = os.getenv("TIME_INTERVAL_UNIT_1D", "days").lower()
+
+# Có thể giữ lại biến cũ để tương thích hoặc fallback
+TIME_INTERVAL = int(os.getenv("TIME_INTERVAL", "1"))
 TIME_INTERVAL_UNIT = os.getenv("TIME_INTERVAL_UNIT", "hours").lower() # "minutes" hoặc "hours"
 
 CANDLE_LIMIT = int(os.getenv("CANDLE_LIMIT", "200")) # Số lượng nến để phân tích
